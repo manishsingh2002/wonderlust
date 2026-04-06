@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wanderlust — Premium Live Journey</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Mono:wght@300;400;500;700&family=Tenor+Sans:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+    :root {
+      --brand: #d97706; --brand-dark: #92400e; --brand-light: #fef3c7;
+      --paper: #faf9f6; --ink: #0f172a; --muted: #64748b;
+      --glass: rgba(255,255,255,0.85);
+      --red: #ef4444; --green: #10b981; --sky: #0ea5e9; --purple: #8b5cf6;
+    }
+
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden;font-family:'Tenor Sans',sans-serif;background:var(--paper);color:var(--ink)}
+
+    /* ── FEED VIEW ─────────────────────────────────────────────────────── */
+    #view-feed{position:fixed;inset:0;overflow-y:auto;background:#f8fafc;transition:opacity .4s ease;z-index:1}
+    
+    /* Ambient background mesh */
+    #view-feed::before {
+        content: ''; position: fixed; inset: 0;
+        background: radial-gradient(circle at 15% 20%, rgba(217, 119, 6, 0.06), transparent 40%),
+                    radial-gradient(circle at 85% 80%, rgba(14, 165, 233, 0.05), transparent 40%);
+        z-index: -1; pointer-events: none;
+    }
+
+    #view-feed nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.8);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid rgba(226,232,240,0.6);padding:0 1rem}
+    .nav-inner{max-width:680px;margin:0 auto;height:70px;display:flex;align-items:center;justify-content:space-between}
+    .logo{display:flex;align-items:center;gap:12px;cursor:pointer}
+    .logo-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--brand-light),var(--brand));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 8px 20px rgba(217,119,6,.25);transition:transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)}
+    .logo:hover .logo-icon {transform: rotate(-10deg) scale(1.05);}
+    .logo-text{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--brand-dark),var(--brand));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.5px;}
+    .nav-links{display:flex;gap:32px}
+    .nav-links a{font-family:'DM Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.16em;font-weight:700;color:#94a3b8;text-decoration:none;transition:all .2s;position:relative}
+    .nav-links a::after{content:'';position:absolute;bottom:-6px;left:0;width:100%;height:2px;background:var(--brand);transform:scaleX(0);transition:transform 0.3s ease;transform-origin:right}
+    .nav-links a:hover{color:var(--ink)}
+    .nav-links a:hover::after{transform:scaleX(1);transform-origin:left}
+    .nav-links a.active{color:var(--ink)}
+    .nav-links a.active::after{transform:scaleX(1)}
+
+    #feed-main{max-width:680px;margin:0 auto;padding:2.5rem 1rem 6rem}
+
+    /* Post form */
+    .post-form{background:#fff;border-radius:24px;border:1px solid rgba(226,232,240,0.8);padding:1.75rem;margin-bottom:2.5rem;box-shadow:0 12px 36px rgba(15,23,42,.04);transition:box-shadow 0.3s ease}
+    .post-form:focus-within{box-shadow:0 20px 48px rgba(15,23,42,.08), 0 0 0 1px rgba(217,119,6,.2)}
+    .form-row{display:flex;gap:14px;margin-bottom:14px}
+    .avatar-sm{width:50px;height:50px;border-radius:50%;border:2px solid #f1f5f9;flex-shrink:0;box-shadow:0 4px 10px rgba(0,0,0,0.05)}
+    .form-fields{flex:1;display:flex;flex-direction:column;gap:12px}
+    .fi{width:100%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px;font-family:'Tenor Sans',sans-serif;font-size:15px;color:var(--ink);outline:none;transition:all .2s}
+    .fi:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 4px rgba(217,119,6,.1)}
+    textarea.fi{resize:none;font-family:'Cormorant Garamond',serif;font-size:18px;line-height:1.5}
+    .form-row2{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+    .upload-label{display:flex;align-items:center;justify-content:center;gap:8px;flex:1;min-width:180px;background:#fff;border:2px dashed #cbd5e1;border-radius:14px;padding:12px 16px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:#64748b;cursor:pointer;transition:all .2s;letter-spacing:.05em}
+    .upload-label:hover{border-color:var(--brand);color:var(--brand-dark);background:var(--brand-light)}
+    .mode-sel{flex:1;min-width:140px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:12px 16px;font-family:'Tenor Sans',sans-serif;font-size:14px;outline:none;cursor:pointer;color:var(--ink)}
+    .preview-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+    .preview-strip:empty{display:none}
+    .preview-strip img{width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid #e2e8f0;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+    .form-footer{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #f1f5f9;padding-top:16px;margin-top:8px}
+    .form-status{font-family:'DM Mono',monospace;font-size:10px;color:#94a3b8;letter-spacing:.08em;display:flex;align-items:center;gap:6px}
+    .form-status-dot {width:6px;height:6px;border-radius:50%;background:#10b981;display:inline-block;animation:pulse 2s infinite}
+    .btn-post{background:linear-gradient(135deg, var(--ink), #334155);color:#fff;border:none;border-radius:100px;padding:12px 32px;font-family:'Tenor Sans',sans-serif;font-weight:700;font-size:15px;cursor:pointer;transition:all .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);box-shadow:0 8px 20px rgba(15,23,42,.2)}
+    .btn-post:hover{background:linear-gradient(135deg, var(--brand-dark), var(--brand));transform:translateY(-2px);box-shadow:0 12px 28px rgba(217,119,6,.3)}
+
+    /* Feed cards */
+    .feed-card{background:#fff;border-radius:24px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:2rem;box-shadow:0 4px 20px rgba(15,23,42,.03);transition:all .3s ease}
+    .feed-card:hover{box-shadow:0 12px 32px rgba(15,23,42,.08);transform:translateY(-2px)}
+    .feed-card.live-card{border:2px solid rgba(217,119,6,.3)}
+    .live-bar{height:4px;background:linear-gradient(90deg,var(--brand-light),var(--brand),#ef4444)}
+    .card-body{padding:1.75rem}
+    .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.2rem}
+    .author-row{display:flex;gap:14px;align-items:center}
+    .author-info .name{font-family:'Tenor Sans',sans-serif;font-size:17px;font-weight:700}
+    .author-info .handle{font-family:'DM Mono',monospace;font-size:11px;color:#64748b;margin-top:2px}
+    .live-tag{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:var(--brand-dark);background:var(--brand-light);padding:6px 12px;border-radius:100px;box-shadow:0 2px 8px rgba(217,119,6,.15)}
+    .live-dot{width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1.5s infinite;box-shadow:0 0 8px rgba(239,68,68,.6)}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    .card-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;margin-bottom:10px;line-height:1.2}
+    .card-note{font-family:'Cormorant Garamond',serif;font-size:18px;color:#475569;line-height:1.65;margin-bottom:1.2rem}
+    .card-tags{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.2rem}
+    .tag{background:#f1f5f9;color:#475569;padding:6px 14px;border-radius:100px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border:1px solid #e2e8f0}
+    .card-img{width:100%;height:280px;object-fit:cover;border-radius:16px;margin-bottom:1.2rem;cursor:pointer;transition:transform .4s ease;box-shadow:0 4px 16px rgba(0,0,0,0.06)}
+    .card-img-wrap {border-radius:16px;overflow:hidden;margin-bottom:1.2rem;}
+    .card-img-wrap:hover .card-img {transform:scale(1.03)}
+    
+    .ride-along-btn{width:100%;background:linear-gradient(135deg,rgba(254,243,199,.7),rgba(254,243,199,.3));border:1.5px solid rgba(217,119,6,.3);border-radius:14px;padding:16px;font-family:'Tenor Sans',sans-serif;font-weight:700;font-size:16px;color:var(--brand-dark);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .3s;margin-bottom:1.2rem;position:relative;overflow:hidden}
+    .ride-along-btn::before {content:'';position:absolute;top:0;left:-100%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.8),transparent);transform:skewX(-20deg);transition:all 0.5s ease;}
+    .ride-along-btn:hover::before {left:150%;}
+    .ride-along-btn:hover{background:linear-gradient(135deg,var(--brand-light),var(--brand-light));box-shadow:0 8px 24px rgba(217,119,6,.2);transform:translateY(-2px);border-color:var(--brand)}
+    
+    .card-actions{display:flex;gap:24px;border-top:1px solid #f1f5f9;padding-top:1.2rem}
+    .action-btn{display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:#64748b;background:none;border:none;cursor:pointer;transition:all .2s;padding:6px 0}
+    .action-btn:hover{color:var(--brand);transform:scale(1.05)}
+    .action-btn.liked{color:var(--red)}
+
+    /* ── MAP VIEW ─────────────────────────────────────────────────────── */
+    #view-map{position:fixed;inset:0;display:none;opacity:0;transition:opacity .5s ease;z-index:100;background:#000}
+    #leaflet-map{position:absolute;inset:0;z-index:0;transition:filter 0.4s ease;}
+    
+    /* Map Mode Switcher */
+    .map-style-ctrl { position:absolute; top:80px; left:20px; z-index:20; display:flex; flex-direction:column; gap:8px; background:rgba(255,255,255,0.85); padding:8px; border-radius:20px; box-shadow:0 12px 32px rgba(15,23,42,0.15); backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.6); pointer-events:auto; }
+    .map-style-btn { width:40px; height:40px; border-radius:12px; border:none; background:transparent; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:all 0.25s; }
+    .map-style-btn.active { background:var(--brand-light); box-shadow:inset 0 0 0 2px var(--brand); transform:scale(1.05)}
+    .map-style-btn:hover:not(.active) { background:#f1f5f9; transform:scale(1.1)}
+
+    /* Map top bar */
+    .map-topbar{position:absolute;top:0;left:0;right:0;z-index:20;padding:20px 24px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;}
+    .back-btn{pointer-events:all;background:rgba(255,255,255,.9);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.8);border-radius:100px;padding:12px 24px;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(15,23,42,.15);transition:all .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);color:var(--ink)}
+    .back-btn:hover{transform:translateX(-5px) scale(1.02);box-shadow:0 12px 32px rgba(15,23,42,.2);background:#fff}
+
+    /* Map sidebar */
+    .map-sidebar{position:absolute;top:20px;right:20px;bottom:20px;width:440px;background:var(--glass);backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);z-index:10;display:flex;flex-direction:column;border-radius:28px;border:1px solid rgba(255,255,255,.7);box-shadow:-10px 20px 60px rgba(15,23,42,.15);overflow:hidden;pointer-events:auto;}
+    .sidebar-header{padding:40px 32px 24px;background:linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(255,255,255,0.3));border-bottom:1px solid rgba(15,23,42,.05);flex-shrink:0}
+    .sidebar-title{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:700;margin-bottom:8px;letter-spacing:-0.5px;}
+    .sidebar-sub{font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.2em;color:var(--brand-dark);font-weight:700;display:flex;align-items:center;gap:8px}
+
+    /* Sidebar tabs */
+    .sidebar-tabs{display:flex;border-bottom:1px solid rgba(15,23,42,.06);background:rgba(255,255,255,.4);flex-shrink:0;padding:0 16px;}
+    .s-tab{flex:1;padding:16px 8px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#64748b;background:none;border:none;cursor:pointer;transition:all .3s;border-bottom:3px solid transparent;display:flex;align-items:center;justify-content:center;gap:6px;opacity:0.7}
+    .s-tab.active{color:var(--brand-dark);border-bottom-color:var(--brand);opacity:1}
+    .s-tab:hover:not(.active){color:var(--ink);opacity:1}
+
+    /* Sidebar content panels */
+    .sidebar-body{flex:1;overflow-y:auto;position:relative;background:linear-gradient(to bottom, transparent, rgba(255,255,255,0.4))}
+    .tab-panel{display:none;padding:28px}
+    .tab-panel.active{display:block;animation:fadeIn 0.4s ease}
+    @keyframes fadeIn {from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+    /* Timeline nodes */
+    .timeline-wrap{position:relative;padding-left:28px;border-left:2px dashed #cbd5e1;margin-left:12px}
+    .tl-node{position:relative;margin-bottom:0;padding-bottom:36px;opacity:0;transform:translateX(16px);animation:slideIn .6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards}
+    @keyframes slideIn{to{opacity:1;transform:translateX(0)}}
+    .tl-dot{position:absolute;left:-39px;top:20px;width:20px;height:20px;border-radius:50%;background:#fff;border:4px solid var(--brand);z-index:2;transition:all .4s ease;box-shadow:0 2px 8px rgba(217,119,6,0.3)}
+    .tl-dot.live{background:var(--brand);box-shadow:0 0 0 4px rgba(217,119,6,.2), 0 4px 12px rgba(217,119,6,0.5);animation:liveGlow 2s infinite}
+    @keyframes liveGlow{0%,100%{box-shadow:0 0 0 4px rgba(217,119,6,.2), 0 4px 12px rgba(217,119,6,0.5)}50%{box-shadow:0 0 0 8px rgba(217,119,6,.1), 0 4px 20px rgba(217,119,6,0.3)}}
+    .tl-card{background:rgba(255,255,255,0.9);backdrop-filter:blur(8px);border:1px solid #e2e8f0;border-radius:20px;padding:20px;cursor:pointer;transition:all .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);box-shadow:0 4px 12px rgba(15,23,42,.03)}
+    .tl-card:hover{border-color:rgba(217,119,6,.4);box-shadow:0 8px 24px rgba(15,23,42,.08);transform:translateX(6px)}
+    .tl-card.active-node{border-color:rgba(217,119,6,.6);background:linear-gradient(135deg, #fff, rgba(254,243,199,.4));box-shadow:0 8px 24px rgba(217,119,6,.15)}
+    .tl-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .tl-badge{display:flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:5px 12px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.1em}
+    .tl-time{font-family:'DM Mono',monospace;font-size:10px;color:var(--brand);font-weight:700;letter-spacing:0.05em}
+    .tl-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;margin-bottom:8px;line-height:1.2;color:var(--ink)}
+    .tl-note{font-family:'Cormorant Garamond',serif;font-size:15px;color:#475569;font-style:italic;line-height:1.6;margin-bottom:14px}
+    .tl-img{width:100%;height:140px;object-fit:cover;border-radius:12px;margin-bottom:12px;box-shadow:0 4px 12px rgba(0,0,0,0.06)}
+    .tl-fly-btn{width:100%;background:rgba(255,255,255,0.5);border:1px solid rgba(217,119,6,.3);border-radius:10px;padding:10px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:var(--brand-dark);cursor:pointer;letter-spacing:.1em;text-transform:uppercase;transition:all .3s}
+    .tl-fly-btn:hover{background:var(--brand);color:#fff;border-color:var(--brand);transform:translateY(-1px);box-shadow:0 4px 12px rgba(217,119,6,0.2)}
+
+    /* Connector line between nodes */
+    .connector{display:flex;align-items:center;gap:12px;padding:8px 0 16px 0;font-family:'DM Mono',monospace;font-size:12px;color:#94a3b8;font-weight:700;}
+    .conn-line{flex:1;height:3px;border-radius:3px}
+    .conn-line.train{background:repeating-linear-gradient(90deg,#f59e0b 0,#f59e0b 8px,transparent 8px,transparent 14px)}
+    .conn-line.ferry,.conn-line.boat{background:repeating-linear-gradient(90deg,#0ea5e9 0,#0ea5e9 6px,transparent 6px,transparent 12px)}
+    .conn-line.walk{background:repeating-linear-gradient(90deg,#10b981 0,#10b981 4px,transparent 4px,transparent 8px)}
+    .conn-line.bus{background:repeating-linear-gradient(90deg,#8b5cf6 0,#8b5cf6 6px,transparent 6px,transparent 12px)}
+    .conn-line.drive{background:repeating-linear-gradient(90deg,#6b7280 0,#6b7280 10px,transparent 10px,transparent 16px)}
+
+    /* Nearby POI panel */
+    .poi-filters{display:flex;gap:10px;overflow-x:auto;padding-bottom:14px;margin-bottom:16px}
+    .poi-filter{flex-shrink:0;display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #e2e8f0;border-radius:100px;padding:8px 18px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:#64748b;cursor:pointer;transition:all .3s;letter-spacing:.05em;box-shadow:0 2px 6px rgba(0,0,0,0.02)}
+    .poi-filter.active{border-color:var(--brand);color:var(--brand-dark);background:var(--brand-light);box-shadow:0 4px 12px rgba(217,119,6,0.15)}
+    .poi-filter:hover:not(.active){border-color:#94a3b8;transform:translateY(-1px)}
+    .poi-list{display:flex;flex-direction:column;gap:12px}
+    .poi-card{background:#fff;border:1px solid #f1f5f9;border-radius:16px;overflow:hidden;display:flex;cursor:pointer;transition:all .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);box-shadow:0 2px 8px rgba(15,23,42,.04)}
+    .poi-card:hover{border-color:rgba(217,119,6,.4);box-shadow:0 8px 24px rgba(15,23,42,.08);transform:translateY(-2px) scale(1.01)}
+    .poi-img{width:96px;height:96px;object-fit:cover;flex-shrink:0}
+    .poi-img-placeholder{width:96px;height:96px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:32px}
+    .poi-info{padding:14px 16px;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+    .poi-name{font-family:'Tenor Sans',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+    .poi-cat{font-family:'DM Mono',monospace;font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+    .poi-meta{display:flex;align-items:center;gap:12px}
+    .poi-dist{font-family:'DM Mono',monospace;font-size:10px;color:var(--brand);font-weight:700}
+    .poi-rating{font-family:'DM Mono',monospace;font-size:10px;color:#f59e0b;font-weight:700;display:flex;align-items:center;gap:3px}
+    .poi-open{font-family:'DM Mono',monospace;font-size:10px;color:var(--green);font-weight:700}
+    .poi-empty{text-align:center;padding:50px 20px;font-family:'DM Mono',monospace;font-size:12px;color:#94a3b8;letter-spacing:.1em}
+    .poi-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px;font-family:'DM Mono',monospace;font-size:11px;color:#94a3b8;letter-spacing:.1em;text-transform:uppercase;font-weight:bold}
+    .poi-loading-dots span{display:inline-block;width:8px;height:8px;background:var(--brand);border-radius:50%;animation:bounce .8s infinite}
+    .poi-loading-dots span:nth-child(2){animation-delay:.15s}
+    .poi-loading-dots span:nth-child(3){animation-delay:.3s}
+    @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+    /* Rides panel */
+    .rides-section-title{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:#64748b;margin-bottom:14px;margin-top:8px;display:flex;align-items:center;gap:10px}
+    .rides-section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg, #e2e8f0, transparent)}
+    .ride-card{background:#fff;border:1px solid #f1f5f9;border-radius:16px;padding:16px;margin-bottom:12px;cursor:pointer;transition:all .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);display:flex;gap:14px;align-items:center;box-shadow:0 2px 8px rgba(15,23,42,.03)}
+    .ride-card:hover{border-color:rgba(217,119,6,.4);box-shadow:0 8px 24px rgba(15,23,42,.08);transform:translateY(-2px) scale(1.01)}
+    .ride-icon{width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;box-shadow:inset 0 2px 4px rgba(255,255,255,0.5), 0 4px 8px rgba(0,0,0,0.05)}
+    .ride-info{flex:1;min-width:0}
+    .ride-name{font-family:'Tenor Sans',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px;color:var(--ink)}
+    .ride-detail{font-family:'DM Mono',monospace;font-size:11px;color:#64748b;margin-bottom:6px;letter-spacing:.04em}
+    .ride-price{font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:var(--brand)}
+    .ride-eta{font-family:'DM Mono',monospace;font-size:11px;color:#94a3b8;text-align:right;flex-shrink:0;font-weight:bold;background:#f8fafc;padding:4px 8px;border-radius:8px}
+    .book-btn{background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;border:none;border-radius:10px;padding:8px 18px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;transition:all .3s;letter-spacing:.08em;white-space:nowrap;margin-left:10px;box-shadow:0 4px 12px rgba(217,119,6,.3)}
+    .book-btn:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(217,119,6,.4)}
+
+    /* Map popup */
+    .custom-popup .leaflet-popup-content-wrapper{background:rgba(255,255,255,.98);backdrop-filter:blur(20px);border:1px solid #e2e8f0;border-radius:20px;box-shadow:0 20px 50px rgba(15,23,42,.2);padding:0;overflow:hidden}
+    .custom-popup .leaflet-popup-tip{background:rgba(255,255,255,.98)}
+    .popup-img{width:260px;height:140px;object-fit:cover}
+    .popup-body{padding:16px}
+    .popup-name{font-family:'Tenor Sans',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--ink)}
+    .popup-cat{font-family:'DM Mono',monospace;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+    .popup-action{width:100%;background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;border:none;border-radius:12px;padding:12px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;margin-top:14px;letter-spacing:.1em;transition:all .3s;text-transform:uppercase}
+    .popup-action:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(217,119,6,.3)}
+
+    /* Route info strip */
+    .route-info-strip{background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.8);border-radius:20px;padding:16px 20px;margin-bottom:24px;display:flex;gap:16px;align-items:center;box-shadow:0 4px 16px rgba(15,23,42,.03);backdrop-filter:blur(10px)}
+    .route-stat{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+    .route-stat .rs-val{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1}
+    .route-stat .rs-label{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.15em;color:#64748b;font-weight:700}
+    .route-divider{width:2px;height:36px;background:rgba(226,232,240,0.8);border-radius:2px}
+
+    /* Leaflet overrides */
+    .leaflet-control-zoom{border:none!important;box-shadow:0 8px 24px rgba(15,23,42,.15)!important;border-radius:14px!important;overflow:hidden;margin-bottom:30px!important;margin-left:24px!important;}
+    .leaflet-control-zoom a{background:rgba(255,255,255,.95)!important;color:var(--brand)!important;border-color:rgba(15,23,42,.05)!important;font-size:18px!important;width:40px!important;height:40px!important;line-height:40px!important;}
+    
+    /* Vehicle / stop markers */
+    .live-gps{width:18px!important;height:18px!important;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 0 20px rgba(239,68,68,.6)}
+    .live-gps::after{content:'';position:absolute;inset:-12px;border:2px solid #ef4444;border-radius:50%;animation:radarPing 2s infinite ease-out}
+    @keyframes radarPing{0%{transform:scale(.5);opacity:.8}100%{transform:scale(3.5);opacity:0}}
+    .wp-dot{width:12px!important;height:12px!important;background:var(--brand);border:2.5px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(217,119,6,.5)}
+    .vehicle-mk{background:rgba(255,255,255,0.95);backdrop-filter:blur(4px);border:3px solid var(--brand);border-radius:50%;width:44px!important;height:44px!important;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 8px 24px rgba(217,119,6,.4);transition:transform 0.2s}
+    .poi-mk{background:#fff;border:2.5px solid;border-radius:10px;width:36px!important;height:36px!important;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 12px rgba(15,23,42,.15);transition:transform 0.2s}
+    .poi-mk:hover{transform:scale(1.1);z-index:1000!important}
+
+    /* Animations */
+    @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+    .fade-up{animation:fadeUp .6s cubic-bezier(0.16, 1, 0.3, 1) both}
+
+    /* Scrollbar for sidebar */
+    .sidebar-body::-webkit-scrollbar{width:4px}
+    .sidebar-body::-webkit-scrollbar-thumb{background:rgba(217,119,6,.3);border-radius:10px}
+    .sidebar-body::-webkit-scrollbar-thumb:hover{background:rgba(217,119,6,.5)}
+    </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════
+     FEED VIEW
+════════════════════════════════════════════════════ -->
+<div id="view-feed">
+  <nav>
+    <div class="nav-inner">
+      <div class="logo">
+        <div class="logo-icon">🧭</div>
+        <span class="logo-text">Wanderlust</span>
+      </div>
+      <div class="nav-links">
+        <a href="#" class="active">Feed</a>
+        <a href="#" onclick="openMapView();return false">Map</a>
+        <a href="#">Profile</a>
+      </div>
+    </div>
+  </nav>
+
+  <div id="feed-main">
+    <!-- Post Form -->
+    <form id="post-form" class="post-form fade-up">
+      <div class="form-row">
+        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=You&backgroundColor=ffedd5" class="avatar-sm">
+        <div class="form-fields">
+          <input type="text" id="input-location" class="fi" placeholder="Where are you? (e.g. Mumbai, Chennai)" required>
+          <textarea id="input-note" class="fi" rows="2" placeholder="Document your experience..." required></textarea>
+          <div class="form-row2">
+            <label class="upload-label">
+              <span style="font-size:16px">📸</span><span>Upload Photos</span>
+              <input type="file" id="input-images" accept="image/*" multiple style="display:none">
+            </label>
+            <select id="input-mode" class="mode-sel fi">
+              <option value="train">🚂 Train</option>
+              <option value="boat">⛵ Boat</option>
+              <option value="bus">🚌 Bus</option>
+              <option value="walk">🥾 Walk</option>
+              <option value="drive">🚗 Drive</option>
+            </select>
+          </div>
+          <div class="preview-strip" id="preview-strip"></div>
+        </div>
+      </div>
+      <div class="form-footer">
+        <span class="form-status" id="form-status"><span class="form-status-dot"></span> Ready to broadcast</span>
+        <button type="submit" class="btn-post" id="submit-btn">Post Stop</button>
+      </div>
+    </form>
+
+    <div id="social-feed"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     MAP VIEW
+════════════════════════════════════════════════════ -->
+<div id="view-map">
+  <div id="leaflet-map"></div>
+
+  <!-- Map Style Controls (Light/Dark/Satellite) -->
+  <div class="map-style-ctrl">
+    <button id="btn-map-light" class="map-style-btn active" onclick="setMapMode('light', this)" title="Light Theme">🌞</button>
+    <button id="btn-map-dark" class="map-style-btn" onclick="setMapMode('dark', this)" title="Dark Theme">🌙</button>
+    <button id="btn-map-sat" class="map-style-btn" onclick="setMapMode('satellite', this)" title="Satellite">🌍</button>
+  </div>
+
+  <!-- Top bar -->
+  <div class="map-topbar">
+    <button class="back-btn" onclick="closeMapView()">← Back to Feed</button>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="map-sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Live Journey</div>
+      <div class="sidebar-sub">
+        <span class="live-dot" style="background:var(--red)"></span>
+        Broadcasting · <span id="sidebar-stop-count">1 stop</span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="sidebar-tabs">
+      <button class="s-tab active" onclick="switchTab('timeline',this)">🗺 Timeline</button>
+      <button class="s-tab" onclick="switchTab('nearby',this)">📍 Nearby</button>
+      <button class="s-tab" onclick="switchTab('rides',this)">🚖 Rides</button>
+    </div>
+
+    <div class="sidebar-body">
+      <!-- TIMELINE TAB -->
+      <div class="tab-panel active" id="tab-timeline">
+        <div id="route-info-strip" style="display:none" class="route-info-strip">
+          <div class="route-stat"><span class="rs-val" id="rs-dist">—</span><span class="rs-label">km total</span></div>
+          <div class="route-divider"></div>
+          <div class="route-stat"><span class="rs-val" id="rs-stops">—</span><span class="rs-label">stops</span></div>
+          <div class="route-divider"></div>
+          <div class="route-stat"><span class="rs-val" id="rs-time">—</span><span class="rs-label">duration</span></div>
+        </div>
+        <div class="timeline-wrap" id="tl-wrap">
+          <!-- injected by JS -->
+        </div>
+        <div id="tl-syncing" style="display:none;padding:16px 0">
+          <div class="poi-loading"><div class="poi-loading-dots"><span></span><span></span><span></span></div>Triangulating position…</div>
+        </div>
+      </div>
+
+      <!-- NEARBY TAB -->
+      <div class="tab-panel" id="tab-nearby">
+        <div class="poi-filters hide-scroll" id="poi-filters">
+          <button class="poi-filter active" onclick="filterPOI('all',this)">🌐 All</button>
+          <button class="poi-filter" onclick="filterPOI('restaurant',this)">🍽 Eat</button>
+          <button class="poi-filter" onclick="filterPOI('hotel',this)">🏨 Stay</button>
+          <button class="poi-filter" onclick="filterPOI('hospital',this)">🏥 Medical</button>
+          <button class="poi-filter" onclick="filterPOI('atm',this)">🏧 ATM</button>
+          <button class="poi-filter" onclick="filterPOI('fuel',this)">⛽ Fuel</button>
+          <button class="poi-filter" onclick="filterPOI('tourism',this)">🎭 Sights</button>
+          <button class="poi-filter" onclick="filterPOI('cafe',this)">☕ Cafe</button>
+        </div>
+        <div id="poi-list" class="poi-list">
+          <div class="poi-loading"><div class="poi-loading-dots"><span></span><span></span><span></span></div>Fetching nearby places…</div>
+        </div>
+      </div>
+
+      <!-- RIDES TAB -->
+      <div class="tab-panel" id="tab-rides">
+        <div id="rides-content">
+          <div class="poi-loading"><div class="poi-loading-dots"><span></span><span></span><span></span></div>Finding rides…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+const defaultImg = 'https://images.unsplash.com/photo-1541252329881-36ba5cf4bb0a?auto=format&fit=crop&q=80&w=800';
+
+let state = {
+  journey: [
+    { lat:21.1702, lng:72.8311, mode:'train', icon:'🚂', title:'Departure: Surat Junction',
+      note:'Platform 4. The journey begins. Grabbing chai before we roll out.', author:'You',
+      images:[defaultImg], time:'2 hrs ago', likes:124 }
+  ],
+  mapInstance: null, currentTileLayer: null, mapMode: 'light',
+  routeLayer: null, liveMarker: null, vehicleMarker: null,
+  poiMarkers: [], allPOI: [], activeFilter: 'all',
+  prevLatLng: null
+};
+
+// ═══════════════════════════════════════════════════════════
+// MAP MODE SWITCHER
+// ═══════════════════════════════════════════════════════════
+const mapTiles = {
+    light: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+};
+
+window.setMapMode = function(mode, btn) {
+    state.mapMode = mode;
+    if(btn) {
+        document.querySelectorAll('.map-style-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    
+    if(!state.mapInstance) return;
+
+    if (state.currentTileLayer) {
+        state.mapInstance.removeLayer(state.currentTileLayer);
+    }
+    
+    state.currentTileLayer = L.tileLayer(mapTiles[mode], { 
+        maxZoom: 19,
+        attribution: mode === 'satellite' ? 'Tiles &copy; Esri' : '&copy; CARTO'
+    }).addTo(state.mapInstance);
+    
+    if(state.routeLayer) state.routeLayer.bringToFront();
+};
+
+// ═══════════════════════════════════════════════════════════
+// FEED
+// ═══════════════════════════════════════════════════════════
+function renderFeed() {
+  const c = document.getElementById('social-feed');
+  c.innerHTML = '';
+  [...state.journey].reverse().forEach((s, i) => {
+    const isLive = i === 0;
+    const card = document.createElement('article');
+    card.className = `feed-card ${isLive ? 'live-card' : ''} fade-up`;
+    card.style.animationDelay = (i * 0.08) + 's';
+    
+    let imgHtml = '';
+    if (s.images && s.images.length) {
+        imgHtml = `<div class="card-img-wrap"><img src="${s.images[0]}" class="card-img" onclick="openMapView()"></div>`;
+    }
+
+    card.innerHTML = `
+      ${isLive ? '<div class="live-bar"></div>' : ''}
+      <div class="card-body">
+        <div class="card-header">
+          <div class="author-row">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${s.author}&backgroundColor=fef3c7" class="avatar-sm">
+            <div class="author-info">
+              <div class="name">${s.author}</div>
+              <div class="handle">@you · ${s.time}</div>
+            </div>
+          </div>
+          ${isLive ? '<div class="live-tag"><span class="live-dot"></span>LIVE</div>' : ''}
+        </div>
+        <h3 class="card-title">${s.title}</h3>
+        <p class="card-note">${s.note}</p>
+        ${imgHtml}
+        ${isLive ? `<button class="ride-along-btn" onclick="openMapView()">🚀 Ride Along Live on Map</button>` : ''}
+        <div class="card-tags">
+          <span class="tag">📍 ${s.title.split(':').pop().trim()}</span>
+          <span class="tag">${s.icon} ${s.mode}</span>
+        </div>
+        <div class="card-actions">
+          <button class="action-btn" onclick="toggleLike(this,${state.journey.length - 1 - i})"><span style="font-size:16px">🤍</span> ${s.likes}</button>
+          <button class="action-btn"><span style="font-size:16px">💬</span> ${Math.floor(Math.random()*12)}</button>
+          <button class="action-btn" style="margin-left:auto">↗ Share</button>
+        </div>
+      </div>`;
+    c.appendChild(card);
+  });
+}
+
+window.toggleLike = function(btn, idx) {
+  const s = state.journey[idx];
+  const liked = btn.classList.toggle('liked');
+  s.likes += liked ? 1 : -1;
+  const span = btn.querySelector('span');
+  span.innerText = liked ? '❤️' : '🤍';
+  btn.innerHTML = `<span>${span.innerText}</span> ${s.likes}`;
+};
+
+// ═══════════════════════════════════════════════════════════
+// FILE UPLOAD PREVIEW
+// ═══════════════════════════════════════════════════════════
+document.getElementById('input-images').addEventListener('change', function() {
+  const strip = document.getElementById('preview-strip');
+  strip.innerHTML = '';
+  Array.from(this.files).forEach(f => {
+    const r = new FileReader();
+    r.onload = e => {
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      strip.appendChild(img);
+    };
+    r.readAsDataURL(f);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// FORM SUBMIT
+// ═══════════════════════════════════════════════════════════
+document.getElementById('post-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  const status = document.getElementById('form-status');
+  const loc = document.getElementById('input-location').value;
+  const note = document.getElementById('input-note').value;
+  const mode = document.getElementById('input-mode').value;
+  const files = document.getElementById('input-images').files;
+  const icons = { train:'🚂', boat:'⛵', bus:'🚌', walk:'🥾', drive:'🚗' };
+
+  btn.textContent = 'Locating…'; btn.disabled = true;
+  status.innerHTML = '<span class="form-status-dot" style="background:#f59e0b"></span> Triangulating GPS coordinates…';
+
+  let images = [];
+  if (files.length) {
+    images = await Promise.all(Array.from(files).map(f => new Promise(res => {
+      const r = new FileReader(); r.onload = ev => res(ev.target.result); r.readAsDataURL(f);
+    })));
+  } else {
+    images = ['https://images.unsplash.com/photo-1498654896293-37aacf113fd9?auto=format&fit=crop&q=80&w=800'];
+  }
+
+  let lat = 19.076, lng = 72.877;
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(loc)}&limit=1`);
+    const data = await res.json();
+    if (data && data.length) { lat = +data[0].lat; lng = +data[0].lon; }
+    else { const l = state.journey.at(-1); lat = l.lat - .4 + Math.random()*.2; lng = l.lng + Math.random()*.2 - .1; }
+  } catch { const l = state.journey.at(-1); lat = l.lat - .4; lng = l.lng; }
+
+  const stop = { lat, lng, mode, icon: icons[mode], title:`Stop: ${loc}`, note, author:'You', images, time:'Just Now', likes:0 };
+  state.journey.push(stop);
+
+  e.target.reset();
+  document.getElementById('preview-strip').innerHTML = '';
+  btn.textContent = 'Broadcast'; btn.disabled = false;
+  status.innerHTML = '<span class="form-status-dot"></span> Broadcast successful.';
+  setTimeout(() => status.innerHTML = '<span class="form-status-dot"></span> Ready to broadcast', 3000);
+
+  renderFeed();
+  if (state.mapInstance) {
+    renderTimeline();
+    await appendRouteSegment(stop, state.journey.at(-2));
+    fetchNearbyPOI(lat, lng);
+    fetchRides(lat, lng, loc);
+    document.getElementById('sidebar-stop-count').textContent = `${state.journey.length} stops`;
+    scrollToBottom('tab-timeline');
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// VIEW SWITCHING
+// ═══════════════════════════════════════════════════════════
+window.openMapView = async function() {
+  const vf = document.getElementById('view-feed'), vm = document.getElementById('view-map');
+  vf.style.opacity = '0';
+  vf.style.transform = 'scale(0.98)';
+  await delay(300);
+  vf.style.display = 'none';
+  vm.style.display = 'block';
+  await delay(20);
+  vm.style.opacity = '1';
+  vm.style.transform = 'scale(1)';
+  await initMap();
+};
+
+window.closeMapView = function() {
+  const vf = document.getElementById('view-feed'), vm = document.getElementById('view-map');
+  vm.style.opacity = '0';
+  vm.style.transform = 'scale(1.02)';
+  setTimeout(() => {
+    vm.style.display = 'none';
+    vf.style.display = 'block';
+    setTimeout(() => {
+        vf.style.opacity = '1';
+        vf.style.transform = 'scale(1)';
+    }, 20);
+  }, 400);
+};
+
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+// ═══════════════════════════════════════════════════════════
+// MAP INIT
+// ═══════════════════════════════════════════════════════════
+async function initMap() {
+  if (!state.mapInstance) {
+    const s0 = state.journey[0];
+    state.mapInstance = L.map('leaflet-map', { zoomControl: false, zoomAnimation: true })
+      .setView([s0.lat, s0.lng], 8);
+    L.control.zoom({ position: 'bottomleft' }).addTo(state.mapInstance);
+    state.routeLayer = L.layerGroup().addTo(state.mapInstance);
+    
+    // Set initial map mode to light
+    setMapMode('light', document.getElementById('btn-map-light'));
+  }
+
+  state.mapInstance.invalidateSize();
+  clearMapLayers();
+
+  // Draw all route segments
+  for (let i = 1; i < state.journey.length; i++) {
+    await drawRouteSegment(state.journey[i-1], state.journey[i], false);
+  }
+
+  // Add waypoint markers for all but last
+  state.journey.slice(0, -1).forEach(s => {
+    L.marker([s.lat, s.lng], { icon: wpIcon() }).addTo(state.routeLayer);
+  });
+
+  // Live marker at last stop
+  const last = state.journey.at(-1);
+  state.liveMarker = L.marker([last.lat, last.lng], { icon: liveIcon() }).addTo(state.routeLayer);
+  state.vehicleMarker = L.marker([last.lat, last.lng], { icon: vehicleIcon(last.icon) }).addTo(state.routeLayer);
+  state.prevLatLng = [last.lat, last.lng];
+
+  state.mapInstance.flyTo([last.lat, last.lng], 12, { animate: true, duration: 2 });
+
+  renderTimeline();
+  updateRouteStats();
+
+  const lastStop = state.journey.at(-1);
+  await fetchNearbyPOI(lastStop.lat, lastStop.lng);
+  fetchRides(lastStop.lat, lastStop.lng, lastStop.title.split(':').pop().trim());
+  document.getElementById('sidebar-stop-count').textContent = `${state.journey.length} stops`;
+}
+
+function clearMapLayers() {
+  if (state.routeLayer) state.routeLayer.clearLayers();
+  state.liveMarker = null; state.vehicleMarker = null; state.poiMarkers = [];
+}
+
+// ═══════════════════════════════════════════════════════════
+// OSRM ROUTING — real road/rail paths
+// ═══════════════════════════════════════════════════════════
+async function drawRouteSegment(from, to, animate = true) {
+  let profile = 'driving';
+  if (to.mode === 'walk') profile = 'foot';
+  else if (to.mode === 'cycle') profile = 'cycling';
+
+  const url = `https://router.project-osrm.org/route/v1/${profile}/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&steps=false`;
+
+  const color = modeColor(to.mode);
+  const dash = modeDash(to.mode);
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.code === 'Ok' && data.routes.length) {
+      const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+      const line = L.polyline(coords, { color, weight: 5, dashArray: dash, opacity: .9, lineCap: 'round', lineJoin: 'round' });
+      state.routeLayer.addLayer(line);
+      if (animate) {
+        line.setStyle({ opacity: 0 });
+        let t = 0;
+        const interval = setInterval(() => {
+          t = Math.min(t + .08, 1);
+          line.setStyle({ opacity: t * .9 });
+          if (t >= 1) clearInterval(interval);
+        }, 40);
+      }
+      return coords;
+    }
+  } catch {}
+
+  const line = L.polyline([[from.lat, from.lng], [to.lat, to.lng]], { color, weight: 4, dashArray: dash, opacity: .8 });
+  state.routeLayer.addLayer(line);
+  return [[from.lat, from.lng], [to.lat, to.lng]];
+}
+
+async function appendRouteSegment(newStop, prevStop) {
+  if (!prevStop) return;
+  const coords = await drawRouteSegment(prevStop, newStop, true);
+
+  if (state.liveMarker) {
+    const old = state.liveMarker.getLatLng();
+    L.marker([old.lat, old.lng], { icon: wpIcon() }).addTo(state.routeLayer);
+    state.liveMarker.setLatLng([newStop.lat, newStop.lng]);
+  }
+  if (state.vehicleMarker) {
+    state.vehicleMarker.setIcon(vehicleIcon(newStop.icon));
+    slideVehicle(state.prevLatLng, [newStop.lat, newStop.lng], 3000);
+  }
+  state.prevLatLng = [newStop.lat, newStop.lng];
+  state.mapInstance.flyTo([newStop.lat, newStop.lng], 12, { animate: true, duration: 2.5 });
+  updateRouteStats();
+}
+
+function slideVehicle(from, to, dur) {
+  let start = null;
+  const step = ts => {
+    if (!start) start = ts;
+    const p = Math.min((ts - start) / dur, 1);
+    const ease = p < .5 ? 2*p*p : -1+(4-2*p)*p;
+    if (state.vehicleMarker) state.vehicleMarker.setLatLng([from[0] + (to[0]-from[0])*ease, from[1] + (to[1]-from[1])*ease]);
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// ═══════════════════════════════════════════════════════════
+// NEARBY POI — OpenStreetMap Overpass API
+// ═══════════════════════════════════════════════════════════
+const POI_CATEGORIES = {
+  restaurant: { tag: 'amenity=restaurant', emoji: '🍽', color: '#f59e0b', label: 'Restaurant' },
+  cafe:        { tag: 'amenity=cafe',       emoji: '☕', color: '#92400e', label: 'Cafe' },
+  hotel:       { tag: 'tourism=hotel',      emoji: '🏨', color: '#0ea5e9', label: 'Hotel' },
+  hospital:    { tag: 'amenity=hospital',   emoji: '🏥', color: '#ef4444', label: 'Medical' },
+  pharmacy:    { tag: 'amenity=pharmacy',   emoji: '💊', color: '#10b981', label: 'Pharmacy' },
+  atm:         { tag: 'amenity=atm',        emoji: '🏧', color: '#6366f1', label: 'ATM' },
+  fuel:        { tag: 'amenity=fuel',       emoji: '⛽', color: '#64748b', label: 'Fuel' },
+  tourism:     { tag: 'tourism=attraction', emoji: '🎭', color: '#8b5cf6', label: 'Attraction' }
+};
+
+async function fetchNearbyPOI(lat, lng) {
+  const list = document.getElementById('poi-list');
+  list.innerHTML = '<div class="poi-loading"><div class="poi-loading-dots"><span></span><span></span><span></span></div>Fetching nearby places…</div>';
+  clearPOIMarkers();
+
+  const radius = 3000;
+  const tags = Object.values(POI_CATEGORIES).map(c => `node[${c.tag}](around:${radius},${lat},${lng});`).join('');
+  const query = `[out:json][timeout:20];(${tags});out body 40;`;
+
+  try {
+    const res = await fetch('https://overpass-api.de/api/interpreter', { method:'POST', body:'data='+encodeURIComponent(query) });
+    const data = await res.json();
+    state.allPOI = (data.elements || []).map(el => enrichPOI(el, lat, lng)).sort((a,b) => a.dist - b.dist);
+    renderPOI(state.activeFilter);
+    addPOIMarkers(state.allPOI);
+  } catch {
+    state.allPOI = generateFallbackPOI(lat, lng);
+    renderPOI(state.activeFilter);
+    addPOIMarkers(state.allPOI);
+  }
+}
+
+function enrichPOI(el, userLat, userLng) {
+  let cat = 'tourism';
+  for (const [k, v] of Object.entries(POI_CATEGORIES)) {
+    const [key, val] = v.tag.split('=');
+    if (el.tags && el.tags[key] === val) { cat = k; break; }
+  }
+  const dist = Math.round(getDistM(userLat, userLng, el.lat, el.lon));
+  return {
+    id: el.id, name: el.tags?.name || el.tags?.brand || 'Unknown Place',
+    cat, lat: el.lat, lng: el.lon, dist,
+    distLabel: dist < 1000 ? `${dist}m` : `${(dist/1000).toFixed(1)}km`,
+    rating: (3.5 + Math.random() * 1.4).toFixed(1),
+    isOpen: Math.random() > .3,
+    photo: getPlacePhoto(cat, el.tags?.name)
+  };
+}
+
+function generateFallbackPOI(lat, lng) {
+  const items = [
+    { name:'Cafe Sunrise', cat:'cafe', offset:[.003,.002] },
+    { name:'Hotel Grand', cat:'hotel', offset:[-.004,.003] },
+    { name:'City Hospital', cat:'hospital', offset:[.006,-.001] },
+    { name:'Spice Garden Restaurant', cat:'restaurant', offset:[.002,.005] },
+    { name:'SBI ATM', cat:'atm', offset:[-.002,.004] },
+    { name:'HP Petrol Pump', cat:'fuel', offset:[.005,-.003] },
+    { name:'Local Attraction', cat:'tourism', offset:[-.003,-.004] },
+    { name:'Brew House Cafe', cat:'cafe', offset:[.007,.001] }
+  ];
+  return items.map((it, i) => {
+    const ilat = lat + it.offset[0], ilng = lng + it.offset[1];
+    const dist = Math.round(getDistM(lat, lng, ilat, ilng));
+    return { id: i, name: it.name, cat: it.cat, lat: ilat, lng: ilng, dist,
+             distLabel: dist < 1000 ? `${dist}m` : `${(dist/1000).toFixed(1)}km`,
+             rating: (3.5+Math.random()*1.4).toFixed(1), isOpen: Math.random()>.3, photo: null };
+  });
+}
+
+function getPlacePhoto(cat, name) {
+  const unsplashIds = {
+    restaurant: ['photo-1555396273-367ea4eb4db5', 'photo-1414235077428-338989a2e8c0'],
+    cafe: ['photo-1559925393-8be0ec4767c8', 'photo-1495474472287-4d71bcdd2085'],
+    hotel: ['photo-1566073771259-6a8506099945', 'photo-1551882547-ff40c63fe5fa'],
+    hospital: ['photo-1519494026892-80bbd2d6fd0d'],
+    tourism: ['photo-1469474968028-56623f02e42e', 'photo-1476514525535-07fb3b4ae5f1']
+  };
+  const list = unsplashIds[cat] || unsplashIds['tourism'];
+  const picked = list[Math.floor(Math.random() * list.length)];
+  return `https://images.unsplash.com/${picked}?auto=format&fit=crop&q=60&w=160`;
+}
+
+window.filterPOI = function(filter, btn) {
+  document.querySelectorAll('.poi-filter').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.activeFilter = filter;
+  renderPOI(filter);
+};
+
+function renderPOI(filter) {
+  const list = document.getElementById('poi-list');
+  let items = filter === 'all' ? state.allPOI : state.allPOI.filter(p => p.cat === filter);
+  if (!items.length) { list.innerHTML = '<div class="poi-empty">NO PLACES FOUND NEARBY</div>'; return; }
+
+  list.innerHTML = items.slice(0, 20).map(p => {
+    const c = POI_CATEGORIES[p.cat] || POI_CATEGORIES.tourism;
+    return `<div class="poi-card" onclick="flyToPOI(${p.lat},${p.lng},'${escHtml(p.name)}','${p.cat}')">
+      ${p.photo ? `<img src="${p.photo}" class="poi-img" onerror="this.style.display='none'">` : `<div class="poi-img-placeholder" style="background:${c.color}22">${c.emoji}</div>`}
+      <div class="poi-info">
+        <div class="poi-name">${escHtml(p.name)}</div>
+        <div class="poi-cat">${c.label}</div>
+        <div class="poi-meta">
+          <span class="poi-dist">${p.distLabel}</span>
+          <span class="poi-rating">★ ${p.rating}</span>
+          <span class="poi-open">${p.isOpen ? '● Open' : '<span style="color:#ef4444">● Closed</span>'}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addPOIMarkers(pois) {
+  clearPOIMarkers();
+  pois.slice(0, 30).forEach(p => {
+    const c = POI_CATEGORIES[p.cat] || POI_CATEGORIES.tourism;
+    const icon = L.divIcon({
+      className: 'poi-mk',
+      html: `<div style="color:${c.color}">${c.emoji}</div>`,
+      iconSize: [36, 36], iconAnchor: [18, 18]
+    });
+    const m = L.marker([p.lat, p.lng], { icon }).addTo(state.routeLayer);
+    m.bindPopup(buildPopup(p, c), { className: 'custom-popup', maxWidth: 260 });
+    m.on('click', () => { switchTab('nearby', document.querySelector('.s-tab:nth-child(2)')); });
+    state.poiMarkers.push(m);
+  });
+}
+
+function buildPopup(p, c) {
+  return `<div>
+    ${p.photo ? `<img src="${p.photo}" class="popup-img" style="border-radius:0" onerror="this.style.display='none'">` : ''}
+    <div class="popup-body">
+      <div class="popup-name">${escHtml(p.name)}</div>
+      <div class="popup-cat">${c.emoji} ${c.label} · ${p.distLabel} away · ★ ${p.rating}</div>
+      <button class="popup-action" onclick="switchTab('rides',document.querySelectorAll('.s-tab')[2])">🚖 Get a Ride Here</button>
+    </div>
+  </div>`;
+}
+
+function clearPOIMarkers() {
+  state.poiMarkers.forEach(m => { try { state.routeLayer.removeLayer(m); } catch {} });
+  state.poiMarkers = [];
+}
+
+window.flyToPOI = function(lat, lng, name, cat) {
+  state.mapInstance.flyTo([lat, lng], 17, { animate: true, duration: 1.2 });
+  const c = POI_CATEGORIES[cat] || POI_CATEGORIES.tourism;
+  const m = state.poiMarkers.find(mk => Math.abs(mk.getLatLng().lat - lat) < .0001 && Math.abs(mk.getLatLng().lng - lng) < .0001);
+  if (m) m.openPopup();
+};
+
+// ═══════════════════════════════════════════════════════════
+// RIDES SUGGESTIONS
+// ═══════════════════════════════════════════════════════════
+function fetchRides(lat, lng, locationName) {
+  const cont = document.getElementById('rides-content');
+  const lastStop = state.journey.at(-1);
+  const prevStop = state.journey.length > 1 ? state.journey.at(-2) : null;
+  const dist = prevStop ? getDistKm(prevStop.lat, prevStop.lng, lat, lng) : null;
+
+  const isIndia = lat >= 8 && lat <= 37 && lng >= 68 && lng <= 98;
+
+  cont.innerHTML = `
+    ${isIndia ? renderIndiaPlatforms(lat, lng, locationName) : ''}
+    ${renderRideApps(lat, lng, locationName)}
+    ${renderLocalTransport(lat, lng)}
+    ${dist && dist > 50 ? renderIntercity(lat, lng, locationName) : ''}
+  `;
+}
+
+function renderIndiaPlatforms(lat, lng, loc) {
+  return `
+    <div class="rides-section-title">🇮🇳 Indian Rail & Bus</div>
+    <div class="ride-card" onclick="openLink('https://www.irctc.co.in')">
+      <div class="ride-icon" style="background:#fef3c7">🚂</div>
+      <div class="ride-info">
+        <div class="ride-name">IRCTC Rail Booking</div>
+        <div class="ride-detail">Search trains from ${escHtml(loc.substring(0,18))}</div>
+        <div class="ride-price">Book on IRCTC →</div>
+      </div>
+      <button class="book-btn">Open</button>
+    </div>
+    <div class="ride-card" onclick="openLink('https://www.redbus.in')">
+      <div class="ride-icon" style="background:#fef3c7">🚌</div>
+      <div class="ride-info">
+        <div class="ride-name">RedBus</div>
+        <div class="ride-detail">AC Sleeper, Semi-Sleeper buses</div>
+        <div class="ride-price">₹200 – ₹1,200 est.</div>
+      </div>
+      <button class="book-btn">Book</button>
+    </div>`;
+}
+
+function renderRideApps(lat, lng, loc) {
+  const olaDl = `https://book.olacabs.com/?pickup_lat=${lat}&pickup_lng=${lng}&drop_place=${encodeURIComponent(loc)}`;
+  const uberDl = `https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[latitude]=${lat}&dropoff[longitude]=${lng}`;
+  const rapido = `https://www.rapido.bike/`;
+  const eta = Math.floor(3 + Math.random() * 12);
+  return `
+    <div class="rides-section-title">🚖 Ride-Hailing</div>
+    <div class="ride-card" onclick="openLink('${olaDl}')">
+      <div class="ride-icon" style="background:#fef9ee">🟡</div>
+      <div class="ride-info">
+        <div class="ride-name">Ola Cabs</div>
+        <div class="ride-detail">Mini · Sedan · Prime · Share</div>
+        <div class="ride-price">₹${Math.floor(60+Math.random()*80)} – ₹${Math.floor(200+Math.random()*200)} est.</div>
+      </div>
+      <div class="ride-eta">${eta} min</div>
+    </div>
+    <div class="ride-card" onclick="openLink('${uberDl}')">
+      <div class="ride-icon" style="background:#f1f5f9">⚫</div>
+      <div class="ride-info">
+        <div class="ride-name">Uber</div>
+        <div class="ride-detail">Go · Moto · XL · Intercity</div>
+        <div class="ride-price">₹${Math.floor(70+Math.random()*90)} – ₹${Math.floor(220+Math.random()*180)} est.</div>
+      </div>
+      <div class="ride-eta">${eta+2} min</div>
+    </div>
+    <div class="ride-card" onclick="openLink('${rapido}')">
+      <div class="ride-icon" style="background:#fef2f2">🏍</div>
+      <div class="ride-info">
+        <div class="ride-name">Rapido</div>
+        <div class="ride-detail">Bike taxi · Auto</div>
+        <div class="ride-price">₹${Math.floor(25+Math.random()*40)} – ₹${Math.floor(80+Math.random()*60)} est.</div>
+      </div>
+      <div class="ride-eta">${Math.floor(2+Math.random()*6)} min</div>
+    </div>`;
+}
+
+function renderLocalTransport(lat, lng) {
+  return `
+    <div class="rides-section-title">🗺 Navigate</div>
+    <div class="ride-card" onclick="openLink('https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=transit')">
+      <div class="ride-icon" style="background:#ecfdf5">🚌</div>
+      <div class="ride-info">
+        <div class="ride-name">Public Transport</div>
+        <div class="ride-detail">Bus · Metro · Local train routes</div>
+        <div class="ride-price">View on Google Maps</div>
+      </div>
+      <button class="book-btn">Go</button>
+    </div>
+    <div class="ride-card" onclick="openLink('https://www.google.com/maps/@${lat},${lng},16z')">
+      <div class="ride-icon" style="background:#f0f9ff">📍</div>
+      <div class="ride-info">
+        <div class="ride-name">Google Maps</div>
+        <div class="ride-detail">Explore this location</div>
+        <div class="ride-price">Open Street View & more</div>
+      </div>
+      <button class="book-btn">Open</button>
+    </div>`;
+}
+
+function renderIntercity(lat, lng, loc) {
+  return `
+    <div class="rides-section-title">✈ Intercity & Flights</div>
+    <div class="ride-card" onclick="openLink('https://www.makemytrip.com/flights/')">
+      <div class="ride-icon" style="background:#f0fdf4">✈</div>
+      <div class="ride-info">
+        <div class="ride-name">MakeMyTrip Flights</div>
+        <div class="ride-detail">From ${escHtml(loc.substring(0,14))}</div>
+        <div class="ride-price">Compare flight deals</div>
+      </div>
+      <button class="book-btn">Search</button>
+    </div>
+    <div class="ride-card" onclick="openLink('https://www.abhibus.com/')">
+      <div class="ride-icon" style="background:#fdf2f8">🚌</div>
+      <div class="ride-info">
+        <div class="ride-name">Abhibus</div>
+        <div class="ride-detail">Interstate AC buses</div>
+        <div class="ride-price">₹400 – ₹1,800 est.</div>
+      </div>
+      <button class="book-btn">Book</button>
+    </div>`;
+}
+
+window.openLink = function(url) { window.open(url, '_blank'); };
+
+// ═══════════════════════════════════════════════════════════
+// TIMELINE RENDER
+// ═══════════════════════════════════════════════════════════
+function renderTimeline() {
+  const wrap = document.getElementById('tl-wrap');
+  wrap.innerHTML = '';
+  state.journey.forEach((s, i) => {
+    const isLast = i === state.journey.length - 1;
+    const div = document.createElement('div');
+    div.className = 'tl-node';
+    div.style.animationDelay = (i * .1) + 's';
+    div.innerHTML = `
+      <div class="tl-dot ${isLast ? 'live' : ''}"></div>
+      <div class="tl-card" id="tlc-${i}" onclick="flyToStop(${i})">
+        <div class="tl-top">
+          <span class="tl-badge">${s.icon} ${s.mode}</span>
+          <span class="tl-time">${s.time}</span>
+        </div>
+        <div class="tl-title">${s.title}</div>
+        <div class="tl-note">"${s.note.substring(0,80)}${s.note.length>80?'…':''}"</div>
+        ${s.images?.[0] ? `<img src="${s.images[0]}" class="tl-img">` : ''}
+        <button class="tl-fly-btn">📍 Fly to this stop</button>
+      </div>
+      ${i < state.journey.length-1 ? `
+        <div class="connector">
+          <div class="conn-line ${state.journey[i+1].mode}"></div>
+          <span>${state.journey[i+1].icon}</span>
+        </div>` : ''}`;
+    wrap.appendChild(div);
+  });
+
+  // Route stats bar
+  document.getElementById('route-info-strip').style.display = state.journey.length > 1 ? 'flex' : 'none';
+  updateRouteStats();
+}
+
+window.flyToStop = function(idx) {
+  const s = state.journey[idx];
+  state.mapInstance.flyTo([s.lat, s.lng], 14, { animate: true, duration: 1.5 });
+  document.querySelectorAll('.tl-card').forEach(c => c.classList.remove('active-node'));
+  document.getElementById(`tlc-${idx}`)?.classList.add('active-node');
+};
+
+function updateRouteStats() {
+  let totalDist = 0;
+  for (let i = 1; i < state.journey.length; i++) {
+    totalDist += getDistKm(state.journey[i-1].lat, state.journey[i-1].lng, state.journey[i].lat, state.journey[i].lng);
+  }
+  document.getElementById('rs-dist').textContent = totalDist.toFixed(0);
+  document.getElementById('rs-stops').textContent = state.journey.length;
+  const hours = Math.round(totalDist / 60);
+  document.getElementById('rs-time').textContent = hours > 0 ? `${hours}h` : '<1h';
+}
+
+// ═══════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════
+window.switchTab = function(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.s-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+};
+
+// ═══════════════════════════════════════════════════════════
+// ICONS
+// ═══════════════════════════════════════════════════════════
+const liveIcon = () => L.divIcon({ className:'live-gps', iconSize:[18,18], iconAnchor:[9,9] });
+const wpIcon = () => L.divIcon({ className:'wp-dot', iconSize:[12,12], iconAnchor:[6,6] });
+const vehicleIcon = emoji => L.divIcon({
+  className: 'vehicle-mk',
+  html: `<div style="animation:bounce 2s infinite;display:flex;align-items:center;justify-content:center;width:100%;height:100%">${emoji}</div>`,
+  iconSize: [44,44], iconAnchor:[22,22]
+});
+
+// ═══════════════════════════════════════════════════════════
+// MODE STYLING
+// ═══════════════════════════════════════════════════════════
+function modeColor(mode) {
+  return { train:'#f59e0b', boat:'#0ea5e9', bus:'#8b5cf6', walk:'#10b981', drive:'#6b7280', ferry:'#0ea5e9' }[mode] || '#d97706';
+}
+function modeDash(mode) {
+  return { train:'12 8', boat:'8 6', walk:'5 8', bus:'10 6', drive:null }[mode] || '8 6';
+}
+
+// ═══════════════════════════════════════════════════════════
+// GEO UTILS
+// ═══════════════════════════════════════════════════════════
+function getDistKm(lat1,lng1,lat2,lng2) {
+  const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function getDistM(lat1,lng1,lat2,lng2) { return getDistKm(lat1,lng1,lat2,lng2)*1000; }
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+function escHtml(s) { return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
+function scrollToBottom(id) { const el=document.getElementById(id); if(el) el.scrollTo({top:el.scrollHeight,behavior:'smooth'}); }
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+renderFeed();
+</script>
+</body>
+</html>
